@@ -1,0 +1,27 @@
+image: amazonlinux:2
+
+stages:
+  - deploy
+
+before_script:
+  - yum update -y
+  - yum install -y openssh-clients
+
+deploy:
+  stage: deploy
+  script:
+    - echo "Deploying to EC2..."
+    - mkdir -p ~/.ssh
+    - echo "$AWS_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan $AWS_PUBLIC_IP >> ~/.ssh/known_hosts
+    - ssh $AWS_USERNAME@$AWS_PUBLIC_IP 'mkdir -p /var/www/html'
+    - scp index.html $AWS_USERNAME@$AWS_PUBLIC_IP:/var/www/html/
+
+    # Running BeforeInstall scripts
+    - scp -r scripts/ $AWS_USERNAME@$AWS_PUBLIC_IP:~/
+    - ssh $AWS_USERNAME@$AWS_PUBLIC_IP 'sudo bash ~/scripts/install_dependencies'
+    - ssh $AWS_USERNAME@$AWS_PUBLIC_IP 'sudo bash ~/scripts/start_server'
+
+  only:
+    - main
